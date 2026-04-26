@@ -1,10 +1,14 @@
 using AuthService.DTOs;
 using AuthService.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Controllers
 {
-    // controller handles incoming HTTP requests and sends responses
+    /// <summary>
+    /// PUBLIC endpoints — no JWT required.
+    /// These are open to everyone: health check, register, login.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
@@ -16,44 +20,40 @@ namespace AuthService.Controllers
             _authService = authService;
         }
 
-        // GET /api/auth/test - to check if the service is up
+        // GET /api/auth/test
         [HttpGet("test")]
+        [AllowAnonymous]
         public async Task<IActionResult> Test()
         {
             var status = await _authService.GetServiceStatusAsync();
             return Ok(new { message = status, timestamp = DateTime.UtcNow });
         }
 
-        // GET /api/auth/users - get all users from DB
-        [HttpGet("users")]
-        public async Task<IActionResult> GetUsers()
-        {
-            var users = await _authService.GetAllUsersAsync();
-            return Ok(users);
-        }
-
-        // POST /api/auth/register - create a new account
+        // POST /api/auth/register
+        // Returns 201 + JWT token on success
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
         {
-            // ModelState checks the [Required], [EmailAddress] etc. annotations on the DTO
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var (success, message, data) = await _authService.RegisterAsync(dto);
 
             if (!success)
-                return Conflict(new { message }); // 409 - resource already exists
+                return Conflict(new { message });   // 409 - email/username taken
 
             return CreatedAtAction(nameof(Register), new { id = data!.Id }, new
             {
                 message,
-                user = data
+                user = data     // data.Token holds the JWT
             });
         }
 
-        // POST /api/auth/login - sign in with email + password
+        // POST /api/auth/login
+        // Returns 200 + JWT token on success
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
             if (!ModelState.IsValid)
@@ -62,9 +62,9 @@ namespace AuthService.Controllers
             var (success, message, data) = await _authService.LoginAsync(dto);
 
             if (!success)
-                return Unauthorized(new { message }); // 401 - credentials wrong
+                return Unauthorized(new { message });   // 401 - wrong credentials
 
-            return Ok(new { message, user = data });
+            return Ok(new { message, user = data });    // data.Token holds the JWT
         }
     }
 }

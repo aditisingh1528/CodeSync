@@ -7,83 +7,101 @@ namespace AuthService.Services
     public class AuthServiceImpl : IAuthService
     {
         private readonly IUserRepository _userRepository;
+        private readonly IJwtService     _jwtService;
 
-        public AuthServiceImpl(IUserRepository userRepository)
+        public AuthServiceImpl(IUserRepository userRepository, IJwtService jwtService)
         {
             _userRepository = userRepository;
+            _jwtService     = jwtService;
         }
 
-        public async Task<IEnumerable<User>> GetAllUsersAsync()
+        // Returns UserSummaryDto — PasswordHash never leaves the service layer
+        public async Task<IEnumerable<UserSummaryDto>> GetAllUsersAsync()
         {
-            return await _userRepository.GetAllUsersAsync();
+            var users = await _userRepository.GetAllUsersAsync();
+            return users.Select(u => new UserSummaryDto
+            {
+                Id        = u.Id,
+                Username  = u.Username,
+                Email     = u.Email,
+                Role      = u.Role,
+                CreatedAt = u.CreatedAt
+            });
         }
 
         public Task<string> GetServiceStatusAsync()
-        {
-            return Task.FromResult("AuthService is running!");
-        }
+            => Task.FromResult("AuthService is running!");
 
-        // UC-2: Register a new user
+        // ---------------------------------------------------------------
+        // UC-2 + UC-3: Register — hash password, assign default role, issue JWT
+        // ---------------------------------------------------------------
         public async Task<(bool Success, string Message, AuthResponseDto? Data)> RegisterAsync(RegisterDto dto)
         {
-            // Check if email is already taken
             if (await _userRepository.EmailExistsAsync(dto.Email))
                 return (false, "Email is already registered.", null);
 
-            // Check if username is already taken
             if (await _userRepository.UsernameExistsAsync(dto.Username))
                 return (false, "Username is already taken.", null);
 
-            // Hash the password before saving - never store plain text passwords!
-            var passwordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
-
             var user = new User
             {
-                Username = dto.Username,
-                Email    = dto.Email.ToLower(),
-                PasswordHash = passwordHash,
+                Username     = dto.Username,
+                Email        = dto.Email.ToLower(),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
+                Role         = "User",
                 CreatedAt    = DateTime.UtcNow
             };
 
             await _userRepository.AddUserAsync(user);
 
-            var response = new AuthResponseDto
+            var token = _jwtService.GenerateToken(user);
+
+            return (true, "Registration successful!", new AuthResponseDto
             {
                 Id        = user.Id,
                 Username  = user.Username,
                 Email     = user.Email,
+                Role      = user.Role,
                 CreatedAt = user.CreatedAt,
+                Token     = token,
                 Message   = "Registration successful!"
-            };
-
-            return (true, "Registration successful!", response);
+            });
         }
 
-        // UC-2: Login with email + password
+        // ---------------------------------------------------------------
+        // UC-2 + UC-3: Login — verify password, issue fresh JWT
+        // ---------------------------------------------------------------
         public async Task<(bool Success, string Message, AuthResponseDto? Data)> LoginAsync(LoginDto dto)
         {
-            // Look up the user by email
             var user = await _userRepository.GetUserByEmailAsync(dto.Email);
 
-            // Use a generic error message - don't reveal whether it's email or password that's wrong
-            if (user == null)
+            if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
                 return (false, "Invalid email or password.", null);
 
-            // Verify the password against the stored hash
-            bool passwordMatches = BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash);
-            if (!passwordMatches)
-                return (false, "Invalid email or password.", null);
+            var token = _jwtService.GenerateToken(user);
 
-            var response = new AuthResponseDto
+            return (true, "Login successful!", new AuthResponseDto
             {
                 Id        = user.Id,
                 Username  = user.Username,
                 Email     = user.Email,
+                Role      = user.Role,
                 CreatedAt = user.CreatedAt,
+                Token     = token,
                 Message   = "Login successful!"
-            };
+            });
+        }
 
-            return (true, "Login successful!", response);
+        // ---------------------------------------------------------------
+        // UC-3: Admin-only — update any user's role
+        // ---------------------------------------------------------------
+        public async Task<(bool Success, string Message)> UpdateUserRoleAsync(UpdateRoleDto dto)
+        {
+            var updated = await _userRepository.UpdateUserRoleAsync(dto.UserId, dto.Role);
+
+            return updated
+                ? (true,  $"User {dto.UserId} role updated to '{dto.Role}' successfully.")
+                : (false, $"User with Id {dto.UserId} was not found.");
         }
     }
 }

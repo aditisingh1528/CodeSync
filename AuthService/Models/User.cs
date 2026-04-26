@@ -11,6 +11,9 @@ namespace AuthService.Models
 
         public string PasswordHash { get; set; } = string.Empty;
 
+        // UC-3: Role support - "User" is the default, "Admin" has extra privileges
+        public string Role { get; set; } = "User";
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

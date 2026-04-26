@@ -1,84 +1,136 @@
-# AuthService — UC-2: Register & Login
+# AuthService — UC-3: JWT Authentication & Role-Based Authorization
 
-## What was added in UC-2
+## What was added in UC-3
 
-### New folders / files
+### New files
 
 ```
 AuthService/
+  Services/
+    IJwtService.cs          ← interface for JWT token generation
+    JwtService.cs           ← implementation using System.IdentityModel.Tokens.Jwt
+  Controllers/
+    UserController.cs       ← secured endpoints (any logged-in user)
+    AdminController.cs      ← admin-only endpoints
   DTOs/
-    RegisterDto.cs       ← input model for POST /api/auth/register
-    LoginDto.cs          ← input model for POST /api/auth/login
-    AuthResponseDto.cs   ← safe response (no PasswordHash exposed)
+    UserProfileDto.cs       ← profile data read from JWT claims
+    UpdateRoleDto.cs        ← body for POST /api/admin/update-role
+  Migrations/
+    20260423120000_AddRoleToUser.cs   ← adds Role column to Users table
 
 AuthService.Tests/
-  AuthService.Tests.csproj
-  DtoValidationTests.cs       ← 10 tests for DTO annotation rules
-  AuthServiceImplTests.cs     ← 7 tests for service business logic
+  JwtServiceTests.cs        ← 9 tests for token generation and validation
+  AdminServiceTests.cs      ← 6 tests for role update logic
 ```
 
-### Modified files (UC-1 → UC-2)
+### Modified files (UC-2 → UC-3)
 
-| File | What changed |
-|------|-------------|
-| `AuthService.csproj` | Added BCrypt.Net-Next 4.0.3 |
-| `Repositories/IUserRepository.cs` | Added GetUserByEmailAsync, EmailExistsAsync, UsernameExistsAsync |
-| `Repositories/UserRepository.cs` | Implemented the 3 new repository methods |
-| `Services/IAuthService.cs` | Added RegisterAsync and LoginAsync signatures |
-| `Services/AuthServiceImpl.cs` | Full register + login with BCrypt |
-| `Controllers/AuthController.cs` | Added POST /register and POST /login endpoints |
-| `AuthService.sln` | Added AuthService.Tests project |
+| File | Change |
+|------|--------|
+| `AuthService.csproj` | Added JwtBearer + System.IdentityModel.Tokens.Jwt packages |
+| `appsettings.json` | Added Jwt:Key, Issuer, Audience, ExpiryMinutes |
+| `Models/User.cs` | Added `Role` property (default: "User") |
+| `Repositories/IUserRepository.cs` | Added `UpdateUserRoleAsync` |
+| `Repositories/UserRepository.cs` | Implemented `UpdateUserRoleAsync` |
+| `Services/IAuthService.cs` | Added `UpdateUserRoleAsync` |
+| `Services/AuthServiceImpl.cs` | Injects IJwtService; generates token on Register + Login |
+| `Controllers/AuthController.cs` | Slimmed to public-only routes with [AllowAnonymous] |
+| `Program.cs` | Full JWT middleware + Swagger Bearer auth + correct pipeline order |
+| `AuthService.Tests.csproj` | Added JWT + IConfiguration packages for testing |
+| `AuthServiceImplTests.cs` | Updated to mock IJwtService; added token + role tests |
 
 ---
 
 ## API Endpoints
 
-### GET /api/auth/test
-Health check.
+### 🔓 Public (no token needed)
 
-### POST /api/auth/register
-Body: { "username": "alice", "email": "alice@example.com", "password": "secret123" }
-- 201 Created  — registration OK
-- 400 Bad Request — validation failed
-- 409 Conflict — email or username already taken
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET  | /api/auth/test | Health check |
+| POST | /api/auth/register | Register → returns JWT |
+| POST | /api/auth/login | Login → returns JWT |
 
-### POST /api/auth/login
-Body: { "email": "alice@example.com", "password": "secret123" }
-- 200 OK — login OK
-- 400 Bad Request — validation failed
-- 401 Unauthorized — wrong credentials
+### 🔒 Secured — any logged-in user (valid JWT required)
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET | /api/user/profile | Read profile from JWT claims |
+| GET | /api/user/me | Greeting + role info |
+
+### 🔐 Admin only (JWT + Role = "Admin" required)
+
+| Method | Route | Description |
+|--------|-------|-------------|
+| GET  | /api/admin/dashboard | Admin welcome |
+| GET  | /api/admin/users | List all users |
+| POST | /api/admin/update-role | Promote or demote a user |
 
 ---
 
-## Running
+## How to use JWT in Swagger
 
-```bash
-# Run the API
-cd AuthService && dotnet run
+1. Call `POST /api/auth/login` or `POST /api/auth/register`
+2. Copy the `token` value from the response
+3. Click the **Authorize 🔓** button at the top of Swagger UI
+4. Enter: `Bearer <paste-token-here>` and click **Authorize**
+5. All secured endpoints now work — Swagger sends the token automatically
 
-# First-time DB setup
-dotnet ef migrations add InitialCreate
-dotnet ef database update
+---
 
-# Run tests
-cd AuthService.Tests && dotnet test
+## How to make a user Admin
+
+### Option A — via Swagger (if you are already an Admin)
+```json
+POST /api/admin/update-role
+{ "userId": 2, "role": "Admin" }
+```
+
+### Option B — directly in SQL Server
+```sql
+UPDATE Users SET Role = 'Admin' WHERE Email = 'youremail@example.com';
 ```
 
 ---
 
-## UC-1 Bugs Fixed
+## Running the project
 
-| Bug | Fix |
-|-----|-----|
-| PasswordHash exposed to client | Use AuthResponseDto instead of raw User model |
-| No password hashing | BCrypt.HashPassword on register, BCrypt.Verify on login |
-| [Required] did not catch empty strings | Changed to [Required(AllowEmptyStrings = false)] |
-| Missing repository methods | Added GetUserByEmailAsync, EmailExistsAsync, UsernameExistsAsync |
+```bash
+# 1. Restore packages
+dotnet restore
+
+# 2. Apply migrations (adds Role column)
+dotnet ef database update
+
+# 3. Run
+dotnet run
+
+# 4. Run all tests (37 total across UC-1/2/3)
+cd ../AuthService.Tests && dotnet test
+```
 
 ---
 
-## Security Notes
+## JWT explained (beginner-friendly)
 
-- Passwords are ALWAYS hashed with BCrypt before saving — never stored plain-text.
-- Login error message is generic ("Invalid email or password") to prevent user enumeration.
-- AuthResponseDto is always returned to the client — the raw User model (with PasswordHash) never leaves the service layer.
+A JWT (JSON Web Token) looks like: `xxxxx.yyyyy.zzzzz`
+
+- **Header** — says what algorithm was used (HS256)
+- **Payload** — contains claims: userId, email, role, expiry (NOT secret — anyone can decode it)
+- **Signature** — cryptographic proof that the server created it; cannot be faked without the secret Key
+
+When the client sends `Authorization: Bearer <token>`, the middleware:
+1. Splits the token into 3 parts
+2. Re-computes the signature using the server's Key
+3. If it matches → token is valid → populates `HttpContext.User` with the claims
+4. If it doesn't match → 401 Unauthorized
+
+---
+
+## Security notes
+
+- Secret `Jwt:Key` must be at least 32 characters and kept private
+- In production, move the key to environment variables or Azure Key Vault — never commit it to git
+- Tokens expire after 60 minutes (configurable via `Jwt:ExpiryMinutes`)
+- Each token has a unique `jti` claim to support future token revocation
+- `ClockSkew = TimeSpan.Zero` means tokens expire exactly on time with no grace period

@@ -8,19 +8,21 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- NUnit testing framework -->
     <PackageReference Include="NUnit" Version="4.1.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.5.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.9.0" />
-
-    <!-- Moq for mocking dependencies in unit tests -->
     <PackageReference Include="Moq" Version="4.20.70" />
-
-    <!-- BCrypt - same as main project so we can test password logic -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+
+    <!-- UC-3: needed to decode and verify JWT tokens in tests -->
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="7.3.1" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+
+    <!-- Needed to build IConfiguration for JwtService tests -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.InMemory" Version="8.0.0" />
   </ItemGroup>
 
-  <!-- Reference the main AuthService project -->
   <ItemGroup>
     <ProjectReference Include="..\AuthService\AuthService.csproj" />
   </ItemGroup>
