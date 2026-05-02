@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>ApiGateway</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Ocelot: the core API Gateway library.
+      It reads ocelot.json and handles all reverse-proxy routing.
+    -->
+    <PackageReference Include="Ocelot" Version="23.4.2" />
+
+    <!--
+      JWT Bearer authentication so the gateway can validate tokens
+      BEFORE forwarding requests downstream.
+    -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
