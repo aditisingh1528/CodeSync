@@ -1,53 +1,16 @@
 {
-  /*
-  =====================================================================
-   OCELOT ROUTING CONFIGURATION  (UC-4)
-  =====================================================================
-   HOW OCELOT WORKS:
-   -  "Routes" is an array of route rules.
-   -  Each rule has an UpstreamPathTemplate  (what the CLIENT sends to the gateway)
-      and a DownstreamPathTemplate          (what Ocelot forwards to the real service).
-   -  {everything} is a catch-all path parameter — it passes the full
-      remaining path segment through unchanged.
-   -  GlobalConfiguration.BaseUrl is the public URL of THIS gateway.
-  =====================================================================
-  */
-
   "Routes": [
-
-    /* ------------------------------------------------------------------
-       ROUTE 1 — PUBLIC AUTH ENDPOINTS  (no JWT required in gateway)
-       Client  →  POST /auth/register   →  AuthService POST /api/auth/register
-       Client  →  POST /auth/login      →  AuthService POST /api/auth/login
-       Client  →  GET  /auth/test       →  AuthService GET  /api/auth/test
-    ------------------------------------------------------------------ */
     {
       "UpstreamPathTemplate": "/auth/{everything}",
       "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
-
       "DownstreamPathTemplate": "/api/auth/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5160
-        }
+        { "Host": "localhost", "Port": 5160 }
       ],
-
-      /*
-        AuthenticationOptions.AuthenticationProviderKey = ""
-        means this route does NOT require a JWT at the gateway level.
-        The AuthService controllers that need a token still enforce it
-        themselves — the gateway just passes the Authorization header along.
-      */
       "AuthenticationOptions": {
         "AuthenticationProviderKey": ""
       },
-
-      /*
-        RateLimitOptions: allow 100 calls per 1 second per client IP.
-        This protects against brute-force login attacks.
-      */
       "RateLimitOptions": {
         "ClientWhitelist": [],
         "EnableRateLimiting": true,
@@ -56,79 +19,60 @@
         "Limit": 100
       }
     },
-
-    /* ------------------------------------------------------------------
-       ROUTE 2 — SECURED USER ENDPOINTS  (JWT required at gateway)
-       Client  →  GET /user/profile   →  AuthService GET /api/user/profile
-       Client  →  GET /user/me        →  AuthService GET /api/user/me
-    ------------------------------------------------------------------ */
     {
       "UpstreamPathTemplate": "/user/{everything}",
       "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
-
       "DownstreamPathTemplate": "/api/user/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5160
-        }
+        { "Host": "localhost", "Port": 5160 }
       ],
-
-      /*
-        AuthenticationOptions.AuthenticationProviderKey = "GatewayJwt"
-        means Ocelot will validate the JWT token here at the gateway
-        using the "GatewayJwt" scheme registered in Program.cs.
-        If the token is missing or invalid the gateway returns 401
-        immediately — the request never reaches AuthService.
-      */
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "GatewayJwt"
       }
     },
-
-    /* ------------------------------------------------------------------
-       ROUTE 3 — ADMIN ENDPOINTS  (JWT + Admin role required at gateway)
-       Client  →  GET/POST /admin/{everything}  →  AuthService /api/admin/{everything}
-    ------------------------------------------------------------------ */
     {
       "UpstreamPathTemplate": "/admin/{everything}",
       "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
-
       "DownstreamPathTemplate": "/api/admin/{everything}",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
-        {
-          "Host": "localhost",
-          "Port": 5160
-        }
+        { "Host": "localhost", "Port": 5160 }
       ],
-
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "GatewayJwt"
       },
-
-      /*
-        RouteClaimsRequirement enforces that the validated JWT contains
-        role = "Admin".  Non-admin tokens get 403 Forbidden here at
-        the gateway — AdminService never sees the request.
-      */
       "RouteClaimsRequirement": {
         "http://schemas.microsoft.com/ws/2008/06/identity/claims/role": "Admin"
       }
+    },
+    {
+      "UpstreamPathTemplate": "/projects/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "DownstreamPathTemplate": "/api/projects/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5217 }
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "GatewayJwt"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/projects",
+      "UpstreamHttpMethod": [ "GET", "POST", "OPTIONS" ],
+      "DownstreamPathTemplate": "/api/projects",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5217 }
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "GatewayJwt"
+      }
     }
   ],
-
   "GlobalConfiguration": {
-    /*
-      BaseUrl is the public address of the gateway itself.
-      Used by Ocelot internally for building redirect URLs.
-    */
     "BaseUrl": "http://localhost:5000",
-
-    /*
-      Global rate limiting settings (apply to all routes unless overridden).
-    */
     "RateLimitOptions": {
       "DisableRateLimitHeaders": false,
       "QuotaExceededMessage": "Too many requests. Please try again later.",
