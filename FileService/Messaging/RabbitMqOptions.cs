@@ -1,4 +1,4 @@
-namespace ExecutionService.Messaging
+namespace FileService.Messaging
 {
     public class RabbitMqOptions
     {
@@ -6,10 +6,7 @@ namespace ExecutionService.Messaging
         public int    Port                   { get; set; } = 5672;
         public string UserName               { get; set; } = "guest";
         public string Password               { get; set; } = "guest";
-        public string QueueName              { get; set; } = "execution.jobs";
-        public string EventsQueueName        { get; set; } = "execution.events";
         public string ProjectDeletedQueue    { get; set; } = "project.deleted";
-        public int    MaxRetries             { get; set; } = 3;
-        public int    RetryDelayMilliseconds { get; set; } = 500;
+        public int    RetryDelayMilliseconds { get; set; } = 5000;
     }
 }

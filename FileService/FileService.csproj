@@ -7,19 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <!-- EF Core + SQL Server -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design"    Version="8.0.0" />
-
-    <!-- JWT Authentication -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
-
-    <!-- Swagger -->
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
-
-    <!-- Redis Caching -->
-    <PackageReference Include="StackExchange.Redis"                              Version="2.7.33" />
+    <PackageReference Include="Swashbuckle.AspNetCore"                  Version="6.5.0" />
+    <PackageReference Include="StackExchange.Redis"                     Version="2.7.33" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" Version="8.0.0" />
+    <PackageReference Include="RabbitMQ.Client"                         Version="6.8.1" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,6 @@
 using System.Text;
 using FileService.Data;
+using FileService.Messaging;
 using FileService.Repositories;
 using FileService.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -10,18 +11,14 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CONTROLLERS
 builder.Services.AddControllers();
 
-// DATABASE 
 builder.Services.AddDbContext<FileDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("FileDB")));
 
-// DEPENDENCY INJECTION 
 builder.Services.AddScoped<IFileRepository, FileRepository>();
 builder.Services.AddScoped<IFileService,    FileServiceImpl>();
 
-// REDIS CACHING
 var redisConn = builder.Configuration.GetConnectionString("Redis")!;
 
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -35,7 +32,11 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
-// JWT 
+// Saga: listen for project.deleted events
+var rabbitOptions = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>() ?? new RabbitMqOptions();
+builder.Services.AddSingleton(rabbitOptions);
+builder.Services.AddHostedService<ProjectDeletedConsumer>();
+
 var jwtKey      = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer   = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
@@ -62,7 +63,6 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// SWAGGER
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -87,14 +87,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// MIDDLEWARE
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "FileService v1");
-        c.RoutePrefix = string.Empty;   // Swagger at http://localhost:5230
+        c.RoutePrefix = string.Empty;
     });
 }
 
@@ -103,20 +102,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// AUTO-MIGRATE
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FileDbContext>();
     try
     {
         db.Database.Migrate();
-        Console.WriteLine("✅ FileDB ready — all migrations applied.");
+        Console.WriteLine("FileDB ready - all migrations applied.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ FileDB migration FAILED: {ex.Message}");
-        Console.WriteLine($"   Inner: {ex.InnerException?.Message}");
-        Console.WriteLine("   → Check SQL Server is running and 'FileDB' connection string is correct.");
+        Console.WriteLine($"FileDB migration FAILED: {ex.Message}");
+        Console.WriteLine($"Inner: {ex.InnerException?.Message}");
     }
 }
 

@@ -25,27 +25,30 @@ builder.Services.AddSingleton<IRabbitMqConnectionFactory, RabbitMqConnectionFact
 builder.Services.AddScoped<IExecutionJobPublisher, RabbitMqExecutionJobPublisher>();
 builder.Services.AddHostedService<ExecutionJobConsumer>();
 
-var jwtKey = builder.Configuration["Jwt:Key"]!;
-var jwtIssuer = builder.Configuration["Jwt:Issuer"]!;
+// Saga: listen for project deleted events and remove execution jobs
+builder.Services.AddHostedService<ProjectDeletedConsumer>();
+
+var jwtKey      = builder.Configuration["Jwt:Key"]!;
+var jwtIssuer   = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
 
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme    = JwtBearerDefaults.AuthenticationScheme;
 })
 .AddJwtBearer(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
+        ValidateIssuer           = true,
+        ValidateAudience         = true,
+        ValidateLifetime         = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtIssuer,
-        ValidAudience = jwtAudience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-        ClockSkew = TimeSpan.Zero
+        ValidIssuer              = jwtIssuer,
+        ValidAudience            = jwtAudience,
+        IssuerSigningKey         = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+        ClockSkew                = TimeSpan.Zero
     };
 });
 
@@ -57,11 +60,11 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new() { Title = "ExecutionService API", Version = "v1" });
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "Bearer",
+        Name        = "Authorization",
+        Type        = SecuritySchemeType.Http,
+        Scheme      = "Bearer",
         BearerFormat = "JWT",
-        In = ParameterLocation.Header,
+        In          = ParameterLocation.Header,
         Description = "Enter JWT from AuthService. Example: Bearer eyJhbGci..."
     });
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -105,7 +108,6 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine($"ExecutionDB migration FAILED: {ex.Message}");
         Console.WriteLine($"Inner: {ex.InnerException?.Message}");
-        Console.WriteLine("Check SQL Server is running and 'ExecutionDB' connection string is correct.");
     }
 }
 

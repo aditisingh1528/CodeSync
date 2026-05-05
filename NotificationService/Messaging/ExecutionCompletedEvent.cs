@@ -1,6 +1,5 @@
 namespace NotificationService.Messaging
 {
-    // This matches exactly what ExecutionService publishes after a job finishes.
     public class ExecutionCompletedEvent
     {
         public int    JobId   { get; set; }

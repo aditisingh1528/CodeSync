@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using ProjectService.Data;
+using ProjectService.Messaging;
 using ProjectService.Repositories;
 using ProjectService.Services;
 using StackExchange.Redis;
@@ -15,7 +16,6 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<ProjectDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProjectDB")));
 
-// DEPENDENCY INJECTION
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IProjectService,    ProjectServiceImpl>();
 
@@ -24,14 +24,18 @@ var redisConnection = builder.Configuration.GetConnectionString("Redis")!;
 builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = redisConnection;
-    options.InstanceName  = "ProjectService:";   // namespaces all keys — avoids collision
-                                                  // with other services using same Redis
+    options.InstanceName  = "ProjectService:";
 });
 
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect($"{redisConnection},abortConnect=false"));
 
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
+
+// Saga: project deleted publisher
+var rabbitOptions = builder.Configuration.GetSection("RabbitMQ").Get<RabbitMqOptions>() ?? new RabbitMqOptions();
+builder.Services.AddSingleton(rabbitOptions);
+builder.Services.AddScoped<IProjectDeletedPublisher, ProjectDeletedPublisher>();
 
 var jwtKey      = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer   = builder.Configuration["Jwt:Issuer"]!;
@@ -63,7 +67,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "ProjectService API", Version = "v1" });
-
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Name         = "Authorization",
@@ -73,17 +76,12 @@ builder.Services.AddSwaggerGen(c =>
         In           = ParameterLocation.Header,
         Description  = "Enter your JWT token from AuthService login. Example: Bearer eyJhbGci..."
     });
-
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id   = "Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             Array.Empty<string>()
         }
@@ -98,7 +96,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "ProjectService v1");
-        c.RoutePrefix = string.Empty;   // Swagger at root: http://localhost:5217
+        c.RoutePrefix = string.Empty;
     });
 }
 
@@ -113,14 +111,12 @@ using (var scope = app.Services.CreateScope())
     try
     {
         db.Database.Migrate();
-        Console.WriteLine("✅ ProjectDB ready — all migrations applied.");
+        Console.WriteLine("ProjectDB ready - all migrations applied.");
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"❌ ProjectDB migration FAILED: {ex.Message}");
-        Console.WriteLine($"   Inner: {ex.InnerException?.Message}");
-        Console.WriteLine("   → Check SQL Server is running.");
-        Console.WriteLine("   → Check 'ProjectDB' connection string in appsettings.json.");
+        Console.WriteLine($"ProjectDB migration FAILED: {ex.Message}");
+        Console.WriteLine($"Inner: {ex.InnerException?.Message}");
     }
 }
 

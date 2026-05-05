@@ -32,5 +32,18 @@ namespace ExecutionService.Repositories
             await _db.SaveChangesAsync();
             return job;
         }
+
+        public async Task<int> DeleteByProjectAsync(int projectId)
+        {
+            var jobs = await _db.ExecutionJobs
+                                .Where(j => j.ProjectId == projectId)
+                                .ToListAsync();
+
+            if (jobs.Count == 0) return 0;
+
+            _db.ExecutionJobs.RemoveRange(jobs);
+            await _db.SaveChangesAsync();
+            return jobs.Count;
+        }
     }
 }
