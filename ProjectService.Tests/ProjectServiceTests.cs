@@ -20,9 +20,8 @@ namespace ProjectService.Tests
             _repoMock  = new Mock<IProjectRepository>();
             _cacheMock = new Mock<ICacheService>();
 
-            // Moq cannot use ReturnsAsync with open-generic It.IsAnyType;
-            // use Returns(Task.FromResult<T>(null)) per-type as a default fallback.
-            // Concrete-type setups in each test override this where needed.
+            _cacheMock.Setup(c => c.GetAsync<It.IsAnyType>(It.IsAny<string>()))
+                      .ReturnsAsync((object?)null);
 
             _service = new ProjectServiceImpl(_repoMock.Object, _cacheMock.Object);
         }

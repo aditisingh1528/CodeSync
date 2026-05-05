@@ -19,8 +19,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
 
     <!-- Needed to build IConfiguration for JwtService tests -->
-    <!-- AddInMemoryCollection is built into the base package; no separate sub-package exists -->
     <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.InMemory" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

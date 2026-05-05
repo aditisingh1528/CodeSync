@@ -48,11 +48,8 @@ namespace ExecutionService.Messaging
                 catch (Exception ex)
                 {
                     _logger.LogWarning(
-                        "RabbitMQ is unavailable at {Host}:{Port}. Execution jobs will stay queued until it is reachable. Retrying in {Delay}ms. Error: {Error}",
-                        _options.HostName,
-                        _options.Port,
-                        _options.RetryDelayMilliseconds,
-                        ex.Message);
+                        "RabbitMQ is unavailable at {Host}:{Port}. Retrying in {Delay}ms. Error: {Error}",
+                        _options.HostName, _options.Port, _options.RetryDelayMilliseconds, ex.Message);
                 }
 
                 CloseRabbitMqObjects();
@@ -64,7 +61,11 @@ namespace ExecutionService.Messaging
         {
             _connection = _connectionFactory.CreateConnection();
             _channel = _connection.CreateModel();
-            DeclareQueue(_channel);
+            DeclareQueue(_channel, _options.QueueName);
+
+            // Also declare the events queue so NotificationService can consume from it.
+            DeclareQueue(_channel, _options.EventsQueueName);
+
             _channel.BasicQos(prefetchSize: 0, prefetchCount: 1, global: false);
 
             var consumer = new AsyncEventingBasicConsumer(_channel);
@@ -93,7 +94,7 @@ namespace ExecutionService.Messaging
             try
             {
                 using var scope = _scopeFactory.CreateScope();
-                var repo = scope.ServiceProvider.GetRequiredService<IExecutionJobRepository>();
+                var repo   = scope.ServiceProvider.GetRequiredService<IExecutionJobRepository>();
                 var runner = scope.ServiceProvider.GetRequiredService<IExecutionRunner>();
 
                 var job = await repo.GetByIdAsync(message.JobId);
@@ -109,11 +110,14 @@ namespace ExecutionService.Messaging
                 await repo.UpdateAsync(job);
 
                 var result = await runner.ExecuteAsync(job, cancellationToken);
-                job.Status = result.Success ? ExecutionJobStatus.Completed : ExecutionJobStatus.Failed;
-                job.Output = result.Output;
+                job.Status     = result.Success ? ExecutionJobStatus.Completed : ExecutionJobStatus.Failed;
+                job.Output     = result.Output;
                 job.ErrorOutput = result.ErrorOutput;
                 job.ExecutedAt = DateTime.UtcNow;
                 await repo.UpdateAsync(job);
+
+                // Tell NotificationService the job finished.
+                PublishExecutionEvent(job.Id, job.UserId, result.Success);
 
                 _channel?.BasicAck(eventArgs.DeliveryTag, multiple: false);
             }
@@ -134,13 +138,43 @@ namespace ExecutionService.Messaging
             }
         }
 
+        private void PublishExecutionEvent(int jobId, int userId, bool success)
+        {
+            try
+            {
+                var ev = new
+                {
+                    JobId   = jobId,
+                    UserId  = userId,
+                    Success = success,
+                    Message = success
+                        ? $"Your execution job #{jobId} completed successfully."
+                        : $"Your execution job #{jobId} failed."
+                };
+
+                var body  = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(ev));
+                var props = _channel!.CreateBasicProperties();
+                props.Persistent = true;
+
+                _channel.BasicPublish(
+                    exchange:        string.Empty,
+                    routingKey:      _options.EventsQueueName,
+                    basicProperties: props,
+                    body:            body);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Could not publish execution event for job {JobId}: {Error}", jobId, ex.Message);
+            }
+        }
+
         private async Task RepublishAsync(int jobId, int attempt, CancellationToken cancellationToken)
         {
             await Task.Delay(_options.RetryDelayMilliseconds, cancellationToken);
 
             var body = Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new ExecutionJobMessage
             {
-                JobId = jobId,
+                JobId   = jobId,
                 Attempt = attempt
             }));
 
@@ -148,33 +182,35 @@ namespace ExecutionService.Messaging
             properties.Persistent = true;
 
             _channel.BasicPublish(
-                exchange: string.Empty,
-                routingKey: _options.QueueName,
+                exchange:        string.Empty,
+                routingKey:      _options.QueueName,
                 basicProperties: properties,
-                body: body);
+                body:            body);
         }
 
         private async Task MarkFailedAsync(int jobId, string error)
         {
             using var scope = _scopeFactory.CreateScope();
             var repo = scope.ServiceProvider.GetRequiredService<IExecutionJobRepository>();
-            var job = await repo.GetByIdAsync(jobId);
+            var job  = await repo.GetByIdAsync(jobId);
             if (job is null) return;
 
-            job.Status = ExecutionJobStatus.Failed;
+            job.Status     = ExecutionJobStatus.Failed;
             job.ErrorOutput = $"Execution failed after {_options.MaxRetries} attempts: {error}";
             job.ExecutedAt = DateTime.UtcNow;
             await repo.UpdateAsync(job);
+
+            PublishExecutionEvent(jobId, job.UserId, success: false);
         }
 
-        private void DeclareQueue(IModel channel)
+        private void DeclareQueue(IModel channel, string queueName)
         {
             channel.QueueDeclare(
-                queue: _options.QueueName,
-                durable: true,
-                exclusive: false,
+                queue:      queueName,
+                durable:    true,
+                exclusive:  false,
                 autoDelete: false,
-                arguments: null);
+                arguments:  null);
         }
 
         public override void Dispose()
@@ -187,7 +223,7 @@ namespace ExecutionService.Messaging
         {
             _channel?.Dispose();
             _connection?.Dispose();
-            _channel = null;
+            _channel    = null;
             _connection = null;
         }
     }
