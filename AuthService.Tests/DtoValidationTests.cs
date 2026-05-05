@@ -4,9 +4,7 @@ using NUnit.Framework;
 
 namespace AuthService.Tests
 {
-    // ---------------------------------------------------------------
     // Tests for RegisterDto validation rules
-    // ---------------------------------------------------------------
     [TestFixture]
     public class RegisterDtoTests
     {
@@ -78,9 +76,7 @@ namespace AuthService.Tests
         }
     }
 
-    // ---------------------------------------------------------------
     // Tests for LoginDto validation rules
-    // ---------------------------------------------------------------
     [TestFixture]
     public class LoginDtoTests
     {

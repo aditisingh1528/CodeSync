@@ -19,14 +19,10 @@ namespace FileService.Data
                 entity.Property(e => e.IsFolder) .IsRequired();
                 entity.Property(e => e.Content)  .HasColumnType("nvarchar(max)");
 
-                // Fast lookup: all files in a project
                 entity.HasIndex(e => e.ProjectId);
 
-                // Fast lookup: children of a folder
                 entity.HasIndex(e => e.ParentFolderId);
 
-                // Self-referencing FK: a file/folder can live inside a folder
-                // Restrict prevents accidentally cascade-deleting whole tree
                 entity.HasOne<CodeFile>()
                       .WithMany(e => e.Children)
                       .HasForeignKey(e => e.ParentFolderId)

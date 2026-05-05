@@ -10,28 +10,18 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─────────────────────────────────────────────────────────────────────────
-// 1. CONTROLLERS
-// ─────────────────────────────────────────────────────────────────────────
+// CONTROLLERS
 builder.Services.AddControllers();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 2. DATABASE — FileDB (separate from AuthDB and ProjectDB)
-// ─────────────────────────────────────────────────────────────────────────
+// DATABASE 
 builder.Services.AddDbContext<FileDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("FileDB")));
 
-// ─────────────────────────────────────────────────────────────────────────
-// 3. DEPENDENCY INJECTION
-// ─────────────────────────────────────────────────────────────────────────
+// DEPENDENCY INJECTION 
 builder.Services.AddScoped<IFileRepository, FileRepository>();
 builder.Services.AddScoped<IFileService,    FileServiceImpl>();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 4. REDIS CACHING
-//    Same pattern as ProjectService.
-//    InstanceName "FileService:" namespaces keys → no collision with ProjectService
-// ─────────────────────────────────────────────────────────────────────────
+// REDIS CACHING
 var redisConn = builder.Configuration.GetConnectionString("Redis")!;
 
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -45,9 +35,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
 
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 5. JWT — validates tokens issued by AuthService (does NOT issue them)
-// ─────────────────────────────────────────────────────────────────────────
+// JWT 
 var jwtKey      = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer   = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
@@ -74,9 +62,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 6. SWAGGER with JWT Bearer
-// ─────────────────────────────────────────────────────────────────────────
+// SWAGGER
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -101,9 +87,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 7. MIDDLEWARE
-// ─────────────────────────────────────────────────────────────────────────
+// MIDDLEWARE
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -119,9 +103,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 8. AUTO-MIGRATE — creates FileDB on startup
-// ─────────────────────────────────────────────────────────────────────────
+// AUTO-MIGRATE
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FileDbContext>();

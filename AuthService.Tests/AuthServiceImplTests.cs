@@ -7,12 +7,6 @@ using NUnit.Framework;
 
 namespace AuthService.Tests
 {
-    // ---------------------------------------------------------------
-    // Unit tests for AuthServiceImpl (UC-2 + UC-3)
-    //
-    // We use Moq to fake the repository and JWT service so these
-    // tests never touch a real database or generate real tokens.
-    // ---------------------------------------------------------------
     [TestFixture]
     public class AuthServiceImplTests
     {
@@ -32,9 +26,7 @@ namespace AuthService.Tests
                     .Returns("fake.jwt.token");
         }
 
-        // =============================================================
         // REGISTER TESTS
-        // =============================================================
 
         [Test]
         public async Task Register_WithNewEmailAndUsername_ShouldSucceed()
@@ -66,7 +58,7 @@ namespace AuthService.Tests
             // Act
             var (success, _, data) = await _authService.RegisterAsync(dto);
 
-            // Assert: token should be populated in the response
+            // Assert
             Assert.That(success, Is.True);
             Assert.That(data!.Token, Is.Not.Null.And.Not.Empty,
                 "Register response must include a JWT token");
@@ -99,7 +91,6 @@ namespace AuthService.Tests
             var dto = new RegisterDto { Username = "carol", Email = "carol@example.com", Password = "pass123" };
             await _authService.RegisterAsync(dto);
 
-            // Verify GenerateToken was called exactly once
             _mockJwt.Verify(j => j.GenerateToken(It.IsAny<User>()), Times.Once,
                 "JWT token should be generated exactly once per registration");
         }
@@ -115,7 +106,6 @@ namespace AuthService.Tests
             Assert.That(success, Is.False);
             Assert.That(data, Is.Null);
 
-            // JWT should NOT be called if registration fails
             _mockJwt.Verify(j => j.GenerateToken(It.IsAny<User>()), Times.Never,
                 "JWT should not be generated when registration fails");
         }
@@ -152,9 +142,7 @@ namespace AuthService.Tests
                 "BCrypt hashes always start with $2");
         }
 
-        // =============================================================
         // LOGIN TESTS
-        // =============================================================
 
         [Test]
         public async Task Login_WithCorrectCredentials_ShouldSucceed()

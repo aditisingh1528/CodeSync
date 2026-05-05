@@ -22,9 +22,7 @@ namespace AuthService.Tests
             _authService = new AuthServiceImpl(_mockRepo.Object, _mockJwt.Object);
         }
 
-        // =============================================================
         // UPDATE ROLE TESTS
-        // =============================================================
 
         [Test]
         public async Task UpdateUserRole_WithValidUser_ShouldSucceed()
@@ -99,9 +97,7 @@ namespace AuthService.Tests
             }
         }
 
-        // =============================================================
         // GET ALL USERS — verify no PasswordHash in response
-        // =============================================================
 
         [Test]
         public async Task GetAllUsers_ShouldReturnUserSummaryDto_NotRawUser()
@@ -119,7 +115,6 @@ namespace AuthService.Tests
             Assert.That(result[0], Is.TypeOf<UserSummaryDto>(),
                 "Must return UserSummaryDto, not raw User model");
 
-            // Confirm PasswordHash property does not exist on the DTO
             var props = typeof(UserSummaryDto).GetProperties().Select(p => p.Name);
             Assert.That(props, Does.Not.Contain("PasswordHash"),
                 "UserSummaryDto must NOT expose PasswordHash");

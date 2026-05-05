@@ -20,11 +20,10 @@ namespace FileService.Tests
             _repoMock  = new Mock<IFileRepository>();
             _cacheMock = new Mock<ICacheService>();
 
-            // Default: cache always misses → falls through to DB
             _service = new FileServiceImpl(_repoMock.Object, _cacheMock.Object);
         }
 
-        // ── CREATE FILE ───────────────────────────────────────────────────
+        //  CREATE FILE 
 
         [Test]
         public async Task CreateFileAsync_ValidInput_ReturnsSuccess()
@@ -123,7 +122,7 @@ namespace FileService.Tests
             Assert.That(data!.ParentFolderId, Is.EqualTo(2));
         }
 
-        // ── CREATE FOLDER ─────────────────────────────────────────────────
+        //  CREATE FOLDER 
 
         [Test]
         public async Task CreateFolderAsync_SetsIsFolderTrue()
@@ -151,7 +150,7 @@ namespace FileService.Tests
             _cacheMock.Verify(c => c.RemoveAsync("file:tree:7"), Times.Once);
         }
 
-        // ── UPDATE CONTENT ────────────────────────────────────────────────
+        //  UPDATE CONTENT 
 
         [Test]
         public async Task UpdateContentAsync_Owner_ReturnsSuccess()
@@ -222,7 +221,7 @@ namespace FileService.Tests
             Assert.That(message, Does.Contain("access"));
         }
 
-        // ── DELETE ────────────────────────────────────────────────────────
+        // DELETE 
 
         [Test]
         public async Task DeleteAsync_File_InvalidatesBothCacheKeys()
@@ -271,7 +270,7 @@ namespace FileService.Tests
             Assert.That(message, Does.Contain("not found"));
         }
 
-        // ── GET TREE ──────────────────────────────────────────────────────
+        // GET TREE 
 
         [Test]
         public async Task GetFileTreeAsync_CacheHit_DoesNotCallDb()
@@ -315,7 +314,6 @@ namespace FileService.Tests
             Assert.That(src.Children.Count,    Is.EqualTo(1));
             Assert.That(src.Children[0].Name,  Is.EqualTo("main.cs"));
 
-            // Must save to cache
             _cacheMock.Verify(c => c.SetAsync("file:tree:1", It.IsAny<List<FileTreeNodeDto>>()), Times.Once);
         }
     }

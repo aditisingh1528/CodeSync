@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AuthService.DTOs
 {
-    // Used by Admin to change a user's role
     // POST /api/admin/update-role
     public class UpdateRoleDto
     {

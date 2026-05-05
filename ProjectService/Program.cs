@@ -10,35 +10,15 @@ using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ─────────────────────────────────────────────────────────────────────────
-// 1. CONTROLLERS
-// ─────────────────────────────────────────────────────────────────────────
 builder.Services.AddControllers();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 2. DATABASE — EF Core + SQL Server (ProjectDB)
-//    Separate database from AuthDB — microservices own their data
-// ─────────────────────────────────────────────────────────────────────────
 builder.Services.AddDbContext<ProjectDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProjectDB")));
 
-// ─────────────────────────────────────────────────────────────────────────
-// 3. DEPENDENCY INJECTION
-// ─────────────────────────────────────────────────────────────────────────
+// DEPENDENCY INJECTION
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IProjectService,    ProjectServiceImpl>();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 4. REDIS CACHING (UC-6)
-//    Two registrations needed:
-//    a) AddStackExchangeRedisCache → gives us IDistributedCache (used by RedisCacheService)
-//    b) IConnectionMultiplexer     → gives us raw Redis connection (used for prefix delete)
-//
-//    Why IConnectionMultiplexer separately?
-//      IDistributedCache has no "delete by prefix" — it can only delete exact keys.
-//      For "invalidate all cached lists for user X" we need raw Redis KEYS command,
-//      which requires the ConnectionMultiplexer directly.
-// ─────────────────────────────────────────────────────────────────────────
 var redisConnection = builder.Configuration.GetConnectionString("Redis")!;
 
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -48,21 +28,11 @@ builder.Services.AddStackExchangeRedisCache(options =>
                                                   // with other services using same Redis
 });
 
-// Register the raw multiplexer as singleton (Redis connections are expensive — reuse them)
-// abortConnect=false means if Redis is down on startup, the app still starts.
-// RedisCacheService catches all exceptions gracefully — the app falls back to DB.
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect($"{redisConnection},abortConnect=false"));
 
-// Register our cache abstraction
 builder.Services.AddScoped<ICacheService, RedisCacheService>();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 5. JWT AUTHENTICATION
-//    ProjectService does NOT issue tokens — it only VALIDATES them.
-//    The token was issued by AuthService — same Key/Issuer/Audience.
-//    If any of these 3 values differ from AuthService → 401 on every call.
-// ─────────────────────────────────────────────────────────────────────────
 var jwtKey      = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer   = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
@@ -89,9 +59,6 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 6. SWAGGER with JWT Bearer support
-// ─────────────────────────────────────────────────────────────────────────
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -123,14 +90,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ─────────────────────────────────────────────────────────────────────────
-// BUILD
-// ─────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 7. MIDDLEWARE PIPELINE
-// ─────────────────────────────────────────────────────────────────────────
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -146,11 +107,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ─────────────────────────────────────────────────────────────────────────
-// 8. AUTO-MIGRATE on startup
-//    Creates ProjectDB and applies migrations automatically.
-//    No need to run "dotnet ef database update" manually.
-// ─────────────────────────────────────────────────────────────────────────
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ProjectDbContext>();

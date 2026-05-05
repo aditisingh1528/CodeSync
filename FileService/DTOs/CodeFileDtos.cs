@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace FileService.DTOs
 {
-    // ── CREATE FILE ───────────────────────────────────────────────────────
+    // CREATE FILE
     public class CreateFileDto
     {
         [Required]
@@ -15,7 +15,7 @@ namespace FileService.DTOs
         public int?    ParentFolderId { get; set; }
     }
 
-    // ── CREATE FOLDER ─────────────────────────────────────────────────────
+    //  CREATE FOLDER 
     public class CreateFolderDto
     {
         [Required]
@@ -27,14 +27,14 @@ namespace FileService.DTOs
         public int?   ParentFolderId { get; set; }
     }
 
-    // ── UPDATE CONTENT ────────────────────────────────────────────────────
+    //  UPDATE CONTENT 
     public class UpdateCodeFileDto
     {
         [Required]
         public string Content { get; set; } = string.Empty;
     }
 
-    // ── RESPONSE (flat) ───────────────────────────────────────────────────
+    //  RESPONSE 
     public class CodeFileResponseDto
     {
         public int      Id              { get; set; }
@@ -48,10 +48,8 @@ namespace FileService.DTOs
         public int      CreatedByUserId { get; set; }
     }
 
-    // ── TREE NODE ─────────────────────────────────────────────────────────
-    // Used for GET /api/files/tree/{projectId}
-    // Each node can have children (folders contain files/folders inside them)
-    public class FileTreeNodeDto
+    //  TREE NODE 
+        public class FileTreeNodeDto
     {
         public int      Id              { get; set; }
         public string   Name            { get; set; } = string.Empty;
@@ -60,7 +58,6 @@ namespace FileService.DTOs
         public string?  Content         { get; set; }   // null for folders
         public int      CreatedByUserId { get; set; }
 
-        // Recursively nested children — empty list for files
         public List<FileTreeNodeDto> Children { get; set; } = new();
     }
 }

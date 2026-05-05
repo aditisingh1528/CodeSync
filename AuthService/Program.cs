@@ -10,27 +10,19 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ---------------------------------------------------------------
-// 1. CONTROLLERS
-// ---------------------------------------------------------------
+// CONTROLLERS
 builder.Services.AddControllers();
 
-// ---------------------------------------------------------------
-// 2. DATABASE (EF Core + SQL Server)
-// ---------------------------------------------------------------
+// DATABASE (EF Core + SQL Server)
 builder.Services.AddDbContext<AuthDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("AuthDB")));
 
-// ---------------------------------------------------------------
-// 3. DEPENDENCY INJECTION
-// ---------------------------------------------------------------
+// DEPENDENCY INJECTION
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService,    AuthServiceImpl>();
 builder.Services.AddScoped<IJwtService,     JwtService>();
 
-// ---------------------------------------------------------------
-// 4. JWT AUTHENTICATION MIDDLEWARE
-// ---------------------------------------------------------------
+// JWT AUTHENTICATION MIDDLEWARE
 var jwtKey      = builder.Configuration["Jwt:Key"]!;
 var jwtIssuer   = builder.Configuration["Jwt:Issuer"]!;
 var jwtAudience = builder.Configuration["Jwt:Audience"]!;
@@ -57,9 +49,7 @@ builder.Services.AddAuthentication(options =>
 
 builder.Services.AddAuthorization();
 
-// ---------------------------------------------------------------
-// 5. SWAGGER with JWT Bearer support
-// ---------------------------------------------------------------
+// SWAGGER with JWT Bearer support
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -93,15 +83,10 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ---------------------------------------------------------------
-// 6. MIDDLEWARE PIPELINE
-// ---------------------------------------------------------------
+// MIDDLEWARE PIPELINE
 
-// In Development: show the FULL exception so you can debug.
-// In Production:  show a safe generic message.
 if (app.Environment.IsDevelopment())
 {
-    // This replaces the global handler in dev — shows real stack trace in Swagger
     app.UseExceptionHandler(errorApp =>
     {
         errorApp.Run(async context =>
@@ -112,7 +97,6 @@ if (app.Environment.IsDevelopment())
             var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
             var ex = exceptionFeature?.Error;
 
-            // Show the REAL error message + inner exception so you can fix it
             await context.Response.WriteAsJsonAsync(new
             {
                 message        = ex?.Message ?? "Unknown error",
@@ -132,7 +116,6 @@ if (app.Environment.IsDevelopment())
 }
 else
 {
-    // Production: safe generic message
     app.UseExceptionHandler(errorApp =>
     {
         errorApp.Run(async context =>
@@ -152,20 +135,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
-// ---------------------------------------------------------------
-// 7. AUTO-MIGRATE + STARTUP DB CHECK
-//    Automatically applies any pending migrations on startup.
-//    This ensures the Role column exists without running
-//    "dotnet ef database update" manually every time.
-// ---------------------------------------------------------------
+// AUTO-MIGRATE + STARTUP DB CHECK
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AuthDbContext>();
 
     try
     {
-        // ApplyMigrations() creates the DB if it doesn't exist AND applies
-        // any pending migrations (including the UC-3 AddRoleToUser migration).
         db.Database.Migrate();
         Console.WriteLine("✅ Database ready — all migrations applied.");
     }
@@ -181,9 +157,7 @@ using (var scope = app.Services.CreateScope())
 
 app.Run();
 
-// ---------------------------------------------------------------
 // Helper: give a specific hint based on the exception type
-// ---------------------------------------------------------------
 static string GetHint(Exception? ex)
 {
     if (ex == null) return "";

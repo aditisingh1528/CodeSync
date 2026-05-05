@@ -1,9 +1,6 @@
 namespace FileService.Services
 {
-    /// <summary>
-    /// Cache abstraction — same pattern as ProjectService.
-    /// Keeps FileServiceImpl clean and makes caching mockable in tests.
-    /// </summary>
+    
     public interface ICacheService
     {
         Task<T?> GetAsync<T>(string key);

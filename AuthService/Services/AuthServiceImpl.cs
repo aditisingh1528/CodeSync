@@ -15,7 +15,7 @@ namespace AuthService.Services
             _jwtService     = jwtService;
         }
 
-        // Returns UserSummaryDto — PasswordHash never leaves the service layer
+        // Returns UserSummaryDto
         public async Task<IEnumerable<UserSummaryDto>> GetAllUsersAsync()
         {
             var users = await _userRepository.GetAllUsersAsync();
@@ -32,9 +32,7 @@ namespace AuthService.Services
         public Task<string> GetServiceStatusAsync()
             => Task.FromResult("AuthService is running!");
 
-        // ---------------------------------------------------------------
-        // UC-2 + UC-3: Register — hash password, assign default role, issue JWT
-        // ---------------------------------------------------------------
+        // hash password, assign default role, issue JWT
         public async Task<(bool Success, string Message, AuthResponseDto? Data)> RegisterAsync(RegisterDto dto)
         {
             if (await _userRepository.EmailExistsAsync(dto.Email))
@@ -68,9 +66,7 @@ namespace AuthService.Services
             });
         }
 
-        // ---------------------------------------------------------------
-        // UC-2 + UC-3: Login — verify password, issue fresh JWT
-        // ---------------------------------------------------------------
+        //verify password, issue fresh JWT
         public async Task<(bool Success, string Message, AuthResponseDto? Data)> LoginAsync(LoginDto dto)
         {
             var user = await _userRepository.GetUserByEmailAsync(dto.Email);
@@ -92,9 +88,7 @@ namespace AuthService.Services
             });
         }
 
-        // ---------------------------------------------------------------
-        // UC-3: Admin-only — update any user's role
-        // ---------------------------------------------------------------
+        // update any user's role
         public async Task<(bool Success, string Message)> UpdateUserRoleAsync(UpdateRoleDto dto)
         {
             var updated = await _userRepository.UpdateUserRoleAsync(dto.UserId, dto.Role);

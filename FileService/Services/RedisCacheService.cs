@@ -4,15 +4,6 @@ using StackExchange.Redis;
 
 namespace FileService.Services
 {
-    /// <summary>
-    /// Redis implementation of ICacheService.
-    /// If Redis is down, every method catches the exception and returns null/does nothing.
-    /// The app falls back to the DB — Redis failure never crashes FileService.
-    ///
-    /// Cache key convention:
-    ///   file:content:{fileId}          → single file content
-    ///   file:tree:{projectId}          → full file tree for a project
-    /// </summary>
     public class RedisCacheService : ICacheService
     {
         private readonly IDistributedCache          _cache;

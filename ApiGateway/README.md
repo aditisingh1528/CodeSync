@@ -345,10 +345,10 @@ The `401` response has only 1.2ms elapsed — proof the gateway rejected it imme
 ## Architecture Summary
 
 ```
-                    ┌─────────────────────────────────────────────┐
+                    ┌─────┐
                     │             API GATEWAY  :5000               │
                     │                                              │
-  CLIENT ──────────►│  ExceptionHandlingMiddleware (outermost)    │
+  CLIENT ─►│  ExceptionHandlingMiddleware (outermost)    │
                     │         │                                    │
                     │  LoggingMiddleware (log req + res + ms)      │
                     │         │                                    │
@@ -356,10 +356,10 @@ The `401` response has only 1.2ms elapsed — proof the gateway rejected it imme
                     │         │                                    │
                     │  UseAuthorization (check role claims)        │
                     │         │                                    │
-                    │  UseOcelot ──────────────────────────────────┼──► AuthService :5160
+                    │  UseOcelot ─┼──► AuthService :5160
                     │    routes:                                   │       /api/auth/*
                     │    /auth/*    → /api/auth/*    (public)      │       /api/user/*
                     │    /user/*    → /api/user/*    (JWT req)     │       /api/admin/*
                     │    /admin/*   → /api/admin/*   (JWT+Admin)   │
-                    └─────────────────────────────────────────────┘
+                    └─────┘
 ```

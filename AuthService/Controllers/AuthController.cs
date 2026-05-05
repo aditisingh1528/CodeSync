@@ -5,10 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Controllers
 {
-    /// <summary>
-    /// PUBLIC endpoints — no JWT required.
-    /// These are open to everyone: health check, register, login.
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class AuthController : ControllerBase
@@ -30,7 +26,6 @@ namespace AuthService.Controllers
         }
 
         // POST /api/auth/register
-        // Returns 201 + JWT token on success
         [HttpPost("register")]
         [AllowAnonymous]
         public async Task<IActionResult> Register([FromBody] RegisterDto dto)
@@ -51,7 +46,6 @@ namespace AuthService.Controllers
         }
 
         // POST /api/auth/login
-        // Returns 200 + JWT token on success
         [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
@@ -62,9 +56,9 @@ namespace AuthService.Controllers
             var (success, message, data) = await _authService.LoginAsync(dto);
 
             if (!success)
-                return Unauthorized(new { message });   // 401 - wrong credentials
+                return Unauthorized(new { message }); 
 
-            return Ok(new { message, user = data });    // data.Token holds the JWT
+            return Ok(new { message, user = data }); 
         }
     }
 }

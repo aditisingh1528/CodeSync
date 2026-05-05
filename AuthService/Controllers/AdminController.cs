@@ -5,10 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Controllers
 {
-    /// <summary>
-    /// ADMIN-ONLY endpoints — requires JWT AND Role = "Admin".
-    /// Regular users get 403 Forbidden.
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize(Roles = "Admin")]
@@ -34,7 +30,6 @@ namespace AuthService.Controllers
         }
 
         // GET /api/admin/users
-        // Suggestion 4 applied: returns UserSummaryDto — PasswordHash is NOT included
         [HttpGet("users")]
         public async Task<IActionResult> GetAllUsers()
         {

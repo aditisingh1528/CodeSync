@@ -7,20 +7,6 @@ using ProjectService.Services;
 
 namespace ProjectService.Tests
 {
-    /// <summary>
-    /// PROJECTSERVICEIMPL TESTS — UC-6 UPDATED
-    /// =========================================
-    /// ICacheService is MOCKED — no real Redis needed.
-    /// 
-    /// Cache mock behaviour in tests:
-    ///   GetAsync  → returns null by default (simulates cache miss → goes to DB)
-    ///   SetAsync  → does nothing (we just verify it was called)
-    ///   RemoveAsync / RemoveByPrefixAsync → does nothing (verify called)
-    ///
-    /// Tests verify BOTH:
-    ///   1. Correct business logic (same as UC-5)
-    ///   2. Cache is SET on reads and INVALIDATED on writes
-    /// </summary>
     [TestFixture]
     public class ProjectServiceTests
     {
@@ -34,16 +20,12 @@ namespace ProjectService.Tests
             _repoMock  = new Mock<IProjectRepository>();
             _cacheMock = new Mock<ICacheService>();
 
-            // Default: cache always misses (returns null) → falls through to DB
-            _cacheMock.Setup(c => c.GetAsync<It.IsAnyType>(It.IsAny<string>()))
-                      .ReturnsAsync((object?)null);
+            // Moq cannot use ReturnsAsync with open-generic It.IsAnyType;
+            // use Returns(Task.FromResult<T>(null)) per-type as a default fallback.
+            // Concrete-type setups in each test override this where needed.
 
             _service = new ProjectServiceImpl(_repoMock.Object, _cacheMock.Object);
         }
-
-        // =================================================================
-        // CREATE TESTS
-        // =================================================================
 
         [Test]
         public async Task CreateAsync_ValidInput_ReturnsSuccess()
@@ -67,7 +49,6 @@ namespace ProjectService.Tests
         [Test]
         public async Task CreateAsync_InvalidatesUserCache()
         {
-            // Create should wipe the user's "all projects" cache
             var dto    = new CreateProjectDto { Name = "X", Description = "" };
             var userId = 7;
 
@@ -76,7 +57,6 @@ namespace ProjectService.Tests
 
             await _service.CreateAsync(userId, dto);
 
-            // Must have called RemoveByPrefix with the user's prefix
             _cacheMock.Verify(
                 c => c.RemoveByPrefixAsync($"project:user:{userId}:"),
                 Times.Once);
@@ -97,10 +77,6 @@ namespace ProjectService.Tests
             Assert.That(data.Description, Is.EqualTo("desc"));
         }
 
-        // =================================================================
-        // GET ALL TESTS
-        // =================================================================
-
         [Test]
         public async Task GetAllByUserAsync_CacheMiss_FetchesFromDbAndSetsCache()
         {
@@ -111,7 +87,6 @@ namespace ProjectService.Tests
                 new() { Id = 2, Name = "P2", UserId = userId, CreatedAt = DateTime.UtcNow, UpdatedAt = DateTime.UtcNow }
             };
 
-            // Cache miss
             _cacheMock.Setup(c => c.GetAsync<List<ProjectResponseDto>>("project:user:3:all"))
                       .ReturnsAsync((List<ProjectResponseDto>?)null);
 
@@ -123,12 +98,10 @@ namespace ProjectService.Tests
             Assert.That(success,       Is.True);
             Assert.That(data!.Count(), Is.EqualTo(2));
 
-            // Must save to cache after DB fetch
             _cacheMock.Verify(
                 c => c.SetAsync("project:user:3:all", It.IsAny<List<ProjectResponseDto>>()),
                 Times.Once);
 
-            // Message should NOT say [cache]
             Assert.That(message, Does.Not.Contain("[cache]"));
         }
 
@@ -141,7 +114,6 @@ namespace ProjectService.Tests
                 new() { Id = 1, Name = "Cached", UserId = userId }
             };
 
-            // Cache HIT
             _cacheMock.Setup(c => c.GetAsync<List<ProjectResponseDto>>("project:user:3:all"))
                       .ReturnsAsync(cached);
 
@@ -150,16 +122,11 @@ namespace ProjectService.Tests
             Assert.That(success,       Is.True);
             Assert.That(data!.Count(), Is.EqualTo(1));
 
-            // DB must NOT be called when cache hits
             _repoMock.Verify(r => r.GetAllByUserIdAsync(It.IsAny<int>()), Times.Never);
 
-            // Message should indicate cache hit
             Assert.That(message, Does.Contain("[cache]"));
         }
 
-        // =================================================================
-        // GET BY ID TESTS
-        // =================================================================
 
         [Test]
         public async Task GetByIdAsync_CacheMiss_FetchesFromDbAndSetsCache()
@@ -178,7 +145,6 @@ namespace ProjectService.Tests
             Assert.That(success,   Is.True);
             Assert.That(data!.Id,  Is.EqualTo(5));
 
-            // Must have saved to cache
             _cacheMock.Verify(
                 c => c.SetAsync("project:user:1:5", It.IsAny<ProjectResponseDto>()),
                 Times.Once);
@@ -198,7 +164,6 @@ namespace ProjectService.Tests
             Assert.That(success,  Is.True);
             Assert.That(data!.Id, Is.EqualTo(5));
 
-            // DB must NOT be called
             _repoMock.Verify(r => r.GetByIdAsync(It.IsAny<int>()), Times.Never);
         }
 
@@ -230,10 +195,6 @@ namespace ProjectService.Tests
             Assert.That(message, Does.Contain("access"));
         }
 
-        // =================================================================
-        // UPDATE TESTS
-        // =================================================================
-
         [Test]
         public async Task UpdateAsync_OwnerUpdates_InvalidatesBothKeys()
         {
@@ -251,9 +212,7 @@ namespace ProjectService.Tests
             Assert.That(data!.Name,       Is.EqualTo("New Name"));
             Assert.That(data.Description, Is.EqualTo("New desc"));
 
-            // Must invalidate the specific project key
             _cacheMock.Verify(c => c.RemoveAsync("project:user:1:1"), Times.Once);
-            // Must invalidate the "all" list
             _cacheMock.Verify(c => c.RemoveByPrefixAsync("project:user:1:"), Times.Once);
         }
 
@@ -288,10 +247,6 @@ namespace ProjectService.Tests
             Assert.That(data!.UpdatedAt, Is.GreaterThan(oldTime));
         }
 
-        // =================================================================
-        // DELETE TESTS
-        // =================================================================
-
         [Test]
         public async Task DeleteAsync_OwnerDeletes_InvalidatesBothKeys()
         {
@@ -305,9 +260,7 @@ namespace ProjectService.Tests
             Assert.That(success, Is.True);
             Assert.That(message, Does.Contain("deleted"));
 
-            // Must invalidate specific key
             _cacheMock.Verify(c => c.RemoveAsync("project:user:1:1"), Times.Once);
-            // Must invalidate the list
             _cacheMock.Verify(c => c.RemoveByPrefixAsync("project:user:1:"), Times.Once);
         }
 
@@ -323,9 +276,7 @@ namespace ProjectService.Tests
             Assert.That(success, Is.False);
             Assert.That(message, Does.Contain("access"));
 
-            // DB delete must NOT be called
             _repoMock.Verify(r => r.DeleteAsync(It.IsAny<int>()), Times.Never);
-            // Cache invalidation must NOT be called either
             _cacheMock.Verify(c => c.RemoveAsync(It.IsAny<string>()),         Times.Never);
             _cacheMock.Verify(c => c.RemoveByPrefixAsync(It.IsAny<string>()), Times.Never);
         }

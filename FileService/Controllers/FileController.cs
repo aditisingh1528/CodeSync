@@ -18,8 +18,7 @@ namespace FileService.Controllers
         private int GetUserId()
             => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        // ── POST /api/files/file ──────────────────────────────────────────
-        // Create a new file
+        // POST /api/files/file
         [HttpPost("file")]
         public async Task<IActionResult> CreateFile([FromBody] CreateFileDto dto)
         {
@@ -30,8 +29,7 @@ namespace FileService.Controllers
             return CreatedAtAction(nameof(GetById), new { id = data!.Id }, new { message, file = data });
         }
 
-        // ── POST /api/files/folder ────────────────────────────────────────
-        // Create a new folder
+        // POST /api/files/folder
         [HttpPost("folder")]
         public async Task<IActionResult> CreateFolder([FromBody] CreateFolderDto dto)
         {
@@ -42,8 +40,7 @@ namespace FileService.Controllers
             return CreatedAtAction(nameof(GetById), new { id = data!.Id }, new { message, folder = data });
         }
 
-        // ── GET /api/files/{id} ───────────────────────────────────────────
-        // Get a single file by Id
+        // GET /api/files/{id}
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetById(int id)
         {
@@ -52,8 +49,7 @@ namespace FileService.Controllers
             return Ok(new { message, file = data });
         }
 
-        // ── GET /api/files/tree/{projectId} ───────────────────────────────
-        // Get the full hierarchical file tree for a project
+        // GET /api/files/tree/{projectId}
         [HttpGet("tree/{projectId:int}")]
         public async Task<IActionResult> GetTree(int projectId)
         {
@@ -62,8 +58,7 @@ namespace FileService.Controllers
             return Ok(new { message, tree = data });
         }
 
-        // ── PUT /api/files/{id}/content ───────────────────────────────────
-        // Update file content (files only — not folders)
+        // PUT /api/files/{id}/content
         [HttpPut("{id:int}/content")]
         public async Task<IActionResult> UpdateContent(int id, [FromBody] UpdateCodeFileDto dto)
         {
@@ -79,8 +74,7 @@ namespace FileService.Controllers
             return Ok(new { message, file = data });
         }
 
-        // ── DELETE /api/files/{id} ────────────────────────────────────────
-        // Delete a file or an empty folder
+        // DELETE /api/files/{id}
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {

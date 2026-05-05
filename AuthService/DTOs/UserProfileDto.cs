@@ -1,7 +1,5 @@
 namespace AuthService.DTOs
 {
-    // Returned by GET /api/auth/profile
-    // Read from the JWT claims - no DB call needed
     public class UserProfileDto
     {
         public string UserId   { get; set; } = string.Empty;

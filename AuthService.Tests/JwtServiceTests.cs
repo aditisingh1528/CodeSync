@@ -9,19 +9,12 @@ using NUnit.Framework;
 
 namespace AuthService.Tests
 {
-    // ---------------------------------------------------------------
-    // Unit tests for JwtService
-    //
-    // We build a real IConfiguration in-memory so we can test the
-    // actual token generation without needing appsettings.json files.
-    // ---------------------------------------------------------------
     [TestFixture]
     public class JwtServiceTests
     {
         private JwtService    _jwtService = null!;
         private IConfiguration _config    = null!;
 
-        // These mirror what we put in appsettings.json
         private const string TestKey      = "ThisIsATestSecretKeyForJwtTokenTesting@2024!!";
         private const string TestIssuer   = "AuthService";
         private const string TestAudience = "AuthServiceClients";
@@ -30,7 +23,6 @@ namespace AuthService.Tests
         [SetUp]
         public void SetUp()
         {
-            // Build an in-memory config that looks exactly like appsettings.json
             var configData = new Dictionary<string, string?>
             {
                 { "Jwt:Key",           TestKey           },
@@ -153,7 +145,6 @@ namespace AuthService.Tests
             var user  = new User { Id = 1, Username = "alice", Email = "alice@example.com", Role = "User" };
             var token = _jwtService.GenerateToken(user);
 
-            // Try to validate with a DIFFERENT key - should fail
             var wrongKey    = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("WrongKeyWrongKeyWrongKeyWrongKey!"));
             var wrongParams = new TokenValidationParameters
             {
@@ -179,7 +170,6 @@ namespace AuthService.Tests
 
             var expectedExpiry = DateTime.UtcNow.AddMinutes(TestExpiry);
 
-            // Allow 10 seconds tolerance for test execution time
             Assert.That(jwt.ValidTo, Is.EqualTo(expectedExpiry).Within(TimeSpan.FromSeconds(10)),
                 $"Token should expire in {TestExpiry} minutes");
         }
@@ -187,7 +177,7 @@ namespace AuthService.Tests
         [Test]
         public void GenerateToken_ShouldHaveUniqueJtiForEachCall()
         {
-            // jti = JWT ID, a unique identifier per token - important to prevent replay attacks
+            
             var user   = new User { Id = 1, Username = "alice", Email = "alice@example.com", Role = "User" };
             var token1 = _jwtService.GenerateToken(user);
             var token2 = _jwtService.GenerateToken(user);
@@ -208,7 +198,6 @@ namespace AuthService.Tests
             var userToken  = _jwtService.GenerateToken(regularUser);
             var adminToken = _jwtService.GenerateToken(adminUser);
 
-            // Tokens for different users should always be different strings
             Assert.That(userToken, Is.Not.EqualTo(adminToken));
         }
     }

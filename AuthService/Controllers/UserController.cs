@@ -6,9 +6,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuthService.Controllers
 {
-    /// <summary>
-    /// SECURED endpoints — any logged-in user (valid JWT) can access these.
-    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
@@ -22,7 +19,6 @@ namespace AuthService.Controllers
         }
 
         // GET /api/user/profile
-        // Returns calling user's info read from JWT claims — no DB call needed
         [HttpGet("profile")]
         public IActionResult GetProfile()
         {
@@ -42,8 +38,6 @@ namespace AuthService.Controllers
         }
 
         // GET /api/user/me
-        // tokenIssuedAt reads the real "iat" claim from the token —
-        // shows when token was CREATED, not when this endpoint was called
         [HttpGet("me")]
         public IActionResult Me()
         {

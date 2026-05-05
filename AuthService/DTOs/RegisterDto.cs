@@ -2,10 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AuthService.DTOs
 {
-    // Data Transfer Object for registration - what the user sends us when signing up
     public class RegisterDto
     {
-        // AllowEmptyStrings = false ensures "" is also treated as missing, not just null
         [Required(AllowEmptyStrings = false, ErrorMessage = "Username is required")]
         [MinLength(3, ErrorMessage = "Username must be at least 3 characters")]
         [MaxLength(50, ErrorMessage = "Username cannot exceed 50 characters")]

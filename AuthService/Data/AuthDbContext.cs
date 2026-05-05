@@ -31,7 +31,7 @@ namespace AuthService.Data
                 entity.Property(u => u.PasswordHash)
                       .IsRequired();
 
-                // UC-3: Role column — default value ensures existing rows get "User"
+                // Role column
                 entity.Property(u => u.Role)
                       .IsRequired()
                       .HasDefaultValue("User");
@@ -39,7 +39,6 @@ namespace AuthService.Data
                 entity.Property(u => u.CreatedAt)
                       .IsRequired();
 
-                // Unique constraints to prevent duplicate email/username at DB level
                 entity.HasIndex(u => u.Email).IsUnique();
                 entity.HasIndex(u => u.Username).IsUnique();
             });

@@ -20,8 +20,6 @@ namespace FileService.Repositories
         public async Task<CodeFile?> GetByIdAsync(int id)
             => await _db.CodeFiles.FindAsync(id);
 
-        // Get ALL files/folders for a project (flat list).
-        // The service layer builds the tree from this flat list.
         public async Task<List<CodeFile>> GetAllByProjectAsync(int projectId)
             => await _db.CodeFiles
                         .Where(f => f.ProjectId == projectId)
@@ -45,7 +43,6 @@ namespace FileService.Repositories
             return true;
         }
 
-        // Used before deleting a folder — we don't want to orphan children
         public async Task<bool> HasChildrenAsync(int folderId)
             => await _db.CodeFiles.AnyAsync(f => f.ParentFolderId == folderId);
     }

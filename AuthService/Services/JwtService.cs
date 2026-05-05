@@ -6,12 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 
 namespace AuthService.Services
 {
-    // JwtService creates signed JWT tokens for authenticated users.
-    // A JWT has 3 parts: Header.Payload.Signature
     public class JwtService : IJwtService
     {
-        // Cache config values at construction time — no need to re-read
-        // appsettings.json on every single token generation call
         private readonly string             _key;
         private readonly string             _issuer;
         private readonly string             _audience;
@@ -25,15 +21,12 @@ namespace AuthService.Services
             _audience      = config["Jwt:Audience"]!;
             _expiryMinutes = int.Parse(config["Jwt:ExpiryMinutes"]!);
 
-            // Build the signing key once and reuse it — same result, less work
             _signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_key));
         }
 
         public string GenerateToken(User user)
         {
-            // 1. CLAIMS — data embedded inside the token
-            //    Anyone can READ claims from a token (they are not secret)
-            //    but they CANNOT forge them — the signature would break
+            // CLAIMS 
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),      // user's DB id
@@ -43,10 +36,10 @@ namespace AuthService.Services
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()) // unique token id
             };
 
-            // 2. SIGNING CREDENTIALS — signs the token with our cached key
+            // SIGNING CREDENTIALS
             var credentials = new SigningCredentials(_signingKey, SecurityAlgorithms.HmacSha256);
 
-            // 3. BUILD and RETURN the token
+            // BUILD and RETURN the token
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject            = new ClaimsIdentity(claims),
@@ -58,7 +51,7 @@ namespace AuthService.Services
 
             var handler = new JwtSecurityTokenHandler();
             var token   = handler.CreateToken(tokenDescriptor);
-            return handler.WriteToken(token);   // "xxxxx.yyyyy.zzzzz"
+            return handler.WriteToken(token); 
         }
     }
 }

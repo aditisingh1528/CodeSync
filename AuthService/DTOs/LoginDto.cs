@@ -2,7 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AuthService.DTOs
 {
-    // Data Transfer Object for login - what the user sends us when logging in
     public class LoginDto
     {
         [Required(AllowEmptyStrings = false, ErrorMessage = "Email is required")]
