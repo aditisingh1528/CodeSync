@@ -141,6 +141,54 @@
       "AuthenticationOptions": {
         "AuthenticationProviderKey": "GatewayJwt"
       }
+    },
+    {
+      "UpstreamPathTemplate": "/collaboration/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "DownstreamPathTemplate": "/api/collaboration/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5260 }
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "GatewayJwt"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/collaboration",
+      "UpstreamHttpMethod": [ "GET", "POST", "OPTIONS" ],
+      "DownstreamPathTemplate": "/api/collaboration",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5260 }
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "GatewayJwt"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/versions/{everything}",
+      "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "OPTIONS" ],
+      "DownstreamPathTemplate": "/api/versions/{everything}",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5270 }
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "GatewayJwt"
+      }
+    },
+    {
+      "UpstreamPathTemplate": "/versions",
+      "UpstreamHttpMethod": [ "GET", "POST", "OPTIONS" ],
+      "DownstreamPathTemplate": "/api/versions",
+      "DownstreamScheme": "http",
+      "DownstreamHostAndPorts": [
+        { "Host": "localhost", "Port": 5270 }
+      ],
+      "AuthenticationOptions": {
+        "AuthenticationProviderKey": "GatewayJwt"
+      }
     }
   ],
   "GlobalConfiguration": {
